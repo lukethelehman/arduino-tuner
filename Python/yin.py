@@ -1,6 +1,7 @@
 import serial
 import numpy as np
 import sys
+import librosa
 
 np.set_printoptions(threshold=sys.maxsize)
 arduino = serial.Serial(port = '/dev/cu.usbmodem34B7DA6377182', baudrate = 115200, timeout = 1)
@@ -24,8 +25,12 @@ def read_sample():
 
 num_samples = 2048
 samples = np.array([read_sample() for i in range(num_samples)])
+y = samples.astype(np.float32)
+y -= y.mean()
 
-print(samples)
+frequencies = np.array(librosa.yin(y, fmin=librosa.note_to_hz('C2'), fmax=librosa.note_to_hz('C6'), sr=4000, frame_length=2048, ))
+
+print(frequencies)
     
 
 
