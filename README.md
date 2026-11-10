@@ -17,6 +17,7 @@ Once the raw ADC values are in correct integer form, the program stores 2048 sam
 librosa.hz_to_notes formats its output like this - A#4+14, which means the arduino code needs to parse the note, the sharp/flat indicator, and the cents deviation. We first make an array of valid note names (to easily confirm the note is valid, and quickly check to see if a current note is the same as the previous note.) We then read in the note string from the serial line and record the index of the sharp/flat indicator. We then we parse the raw note name eg. C# into a string and get its index in the "valid note names" array, and then parse the cents value into an int (constrained between -50 and 50). From there we map the cents onto values from 0-12 (the LED matrix width is 12 pixels long) we then check to see if the previous note/cents are the same, and if they are we don't have to redisplay the matrix. Now we have the raw note name, and the cents deviation from 0-11. 
 
 ### LED-matrix 
+To display things on the Arduino's LED matrix, we need to create a byte array of all 12 notes stores as 8 by 12 bytes arrays of 1s/0s. We then use memcpy to get whichever frame we need into the frame we are displaying. For the tuning bar, we set a threshold for what counts as in tune (+ or - 5 cents) and if its in tune we light up the center two pixels. If it's not in tune, we light up whatever the cents position was we calculated earlier. 
 
 
   
