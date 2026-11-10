@@ -1,28 +1,223 @@
+#include "Arduino_LED_Matrix.h"
+
 const int AMP_PIN = A1;        
 const unsigned long SAMPLE_PERIOD_US = 250;
+
 unsigned long nextTime;
+String line = "";
+ArduinoLEDMatrix matrix;
 
 void setup()
 {
   Serial.begin(115200);
   nextTime = micros();
   analogReadResolution(10);
+  matrix.begin();
 }
 
 void loop()
 {
   while ((long)(micros() - nextTime) < 0) {} 
+
   nextTime += SAMPLE_PERIOD_US;
   uint16_t adc = analogRead(AMP_PIN);  
-
   Serial.write(0x80 | (adc >> 5)); 
-  /*Serial.write only can send 1 byte at a time, so we have to
-  split it in two because the ADC output is 10 bits (0-1023).
-  The right shift gets the first 5 bits, the 0x80 mask sets a "marker bit at the beginning 
-  to let python know the start of each sample"
-  */
   Serial.write(adc & 0x1F);
-  /*same thing here, but the mask just keeps the lowest 5 bits and zeros the rest  */
-}
   
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\n') {
+      showNote(line);
+      line = "";
+    } else {
+      line += c;
+      }
+  }
+}
 
+const String NOTES[12] = {
+  "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"
+};
+
+byte NOTE_FRAMES[12][8][12] = {
+  { // C
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,0,1,1,1,0,0,0,0,0}
+  },
+  { // C#
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,1,1,1,0,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,1,1,1,1,1},
+    {0,1,0,0,0,0,0,0,1,0,1,0},
+    {0,1,0,0,0,0,0,1,1,1,1,1},
+    {0,1,0,0,0,0,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,0,0,0,0,0},
+    {0,0,1,1,1,0,0,0,0,0,0,0}
+  },
+  { // D
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0}
+  },
+  { // D#
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,1,1,1,1,0,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,1,1,1,1,1},
+    {0,1,0,0,0,1,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,1,1,1,1,1},
+    {0,1,0,0,0,1,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,0,0,0,0,0},
+    {0,1,1,1,1,0,0,0,0,0,0,0}
+  },
+  { // E
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,1,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,1,0,0,0,0}
+  },
+  { // F
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,1,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0}
+  },
+  { // F#
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,1,1,1,1,1,0,0,1,0,1,0},
+    {0,1,0,0,0,0,0,1,1,1,1,1},
+    {0,1,0,0,0,0,0,0,1,0,1,0},
+    {0,1,1,1,1,0,0,1,1,1,1,1},
+    {0,1,0,0,0,0,0,0,1,0,1,0},
+    {0,1,0,0,0,0,0,0,0,0,0,0},
+    {0,1,0,0,0,0,0,0,0,0,0,0}
+  },
+  { // G
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,0,0,0,0,0},
+    {0,0,0,1,0,1,1,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,0,1,1,1,0,0,0,0,0}
+  },
+  { // G#
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,1,1,1,0,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,1,1,1,1,1},
+    {0,1,0,0,0,0,0,0,1,0,1,0},
+    {0,1,0,1,1,1,0,1,1,1,1,1},
+    {0,1,0,0,0,1,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,0,0,0,0,0},
+    {0,0,1,1,1,0,0,0,0,0,0,0}
+  },
+  { // A
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,0,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,1,1,1,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0}
+  },
+  { // A#
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,1,1,1,0,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,1,1,1,1,1},
+    {0,1,0,0,0,1,0,0,1,0,1,0},
+    {0,1,1,1,1,1,0,1,1,1,1,1},
+    {0,1,0,0,0,1,0,0,1,0,1,0},
+    {0,1,0,0,0,1,0,0,0,0,0,0},
+    {0,1,0,0,0,1,0,0,0,0,0,0}
+  },
+  { // B
+    {0,0,0,0,0,0,0,0,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,0,0,0,1,0,0,0,0},
+    {0,0,0,1,1,1,1,0,0,0,0,0}
+  }
+};
+
+void showNote(String line) {
+  static int lastNote = -1, lastCentsPosition = -1;
+  int signPosition = -1;
+
+  int noteIndex = getNoteIndex(line);                       
+  if (noteIndex < 0) return;
+
+  signPosition = getSignPosition(line);
+  if (signPosition < 0) return;
+
+  int cents = line.substring(signPosition).toInt();
+  cents = constrain(cents, -50, 50); 
+
+  int centsPosition = map(cents, -50, 50, 0, 11); 
+
+  if (noteIndex == lastNote && centsPosition == lastCentsPosition) return;  
+  lastNote = noteIndex;
+  lastCentsPosition = centsPosition;
+
+  displayMatrix(noteIndex, cents, centsPosition);
+}
+
+int getSignPosition(String line){
+  for (int i = 1; i < line.length(); i++) {
+    if (line[i] == '+' || line[i] == '-') { 
+      return i; 
+      }
+  }
+  return -1;
+}
+
+int getNoteIndex(String line) {
+  if (line.length() == 0) {
+    return -1;
+  }
+  String noteName = String(line[0]);
+  if (line.length() > 1 && line[1] == '#'){
+   noteName += '#';
+  }
+  for (int i = 0; i < 12; i++){
+    if (noteName == NOTES[i]) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+void displayMatrix(int noteIndex, int cents, int centsPosition){
+  byte frame[8][12];
+  memcpy(frame, NOTE_FRAMES[noteIndex], sizeof(frame));         
+      
+  if (abs(cents) <= 5) {                        
+    frame[0][5] = 1;
+    frame[0][6] = 1;
+  } else {
+    frame[0][centsPosition] = 1;                              
+  }
+  matrix.renderBitmap(frame, 8, 12);
+}
