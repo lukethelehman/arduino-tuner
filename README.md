@@ -13,6 +13,12 @@ In python we open up the Serial connection to the port the arduino is connected 
 ### yin-correlation
 Once the raw ADC values are in correct integer form, the program stores 2048 samples into a numpy array. The values in the array are converted to 32 bit floats for librosa.yin. YIN doesn't require accounting for the DC offset (ADC values can't be negative so they center around a midpoint voltage instead of around 0) but from what I can tell it is still best practice to subtract the DC offset (about the average value the wave oscillates about) so that the new values are centered around zero. (this would be more important for FFT and other pitch detection algorithms) We then use librosa.yin and a range from C2 to C6 to calculate fundamental frequencies. We convert those frequencies in hertz to notes/cents offset using librosa.hz_to_notes. (We use ASCII instead of unicode so each character is a byte). We then write each note back to the serial line, and loop the whole process continuously. 
 
+### parsing-note-info-in-arduinoIDE
+librosa.hz_to_notes formats its output like this - A#4+14, which means the arduino code needs to parse the note, the sharp/flat indicator, and the cents deviation. We first make an array of valid note names (to easily confirm the note is valid, and quickly check to see if a current note is the same as the previous note.) We then read in the note string from the serial line and record the index of the sharp/flat indicator. We then we parse the raw note name eg. C# into a string and get its index in the "valid note names" array, and then parse the cents value into an int (constrained between -50 and 50). From there we map the cents onto values from 0-12 (the LED matrix width is 12 pixels long) we then check to see if the previous note/cents are the same, and if they are we don't have to redisplay the matrix. Now we have the raw note name, and the cents deviation from 0-11. 
+
+### LED-matrix 
+
+
   
 
  
