@@ -1,5 +1,6 @@
 ## overview 
 This tuner uses a MAX4466 microphone, Arduino R4 Wifi, and YIN correlation in python to estimate fundamental frequencies and display the correlated musical note/tuning offset on the Arduino's LED matrix. (The LED dot on the top row slides left when flat, and right when sharp) 
+[demonstration](https://youtube.com/shorts/ZxyAnz8K30c?feature=share )
 
 ### mic-input
 The Arduino samples audio from the MA4466 every 250 microseconds (4000 hz). It reads voltages as ADC (Analog to Digital Converter) values at a 10 bit resolution (0-1023).  
